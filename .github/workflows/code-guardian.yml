@@ -9,11 +9,20 @@ jobs:
     steps:
     - name: Validación Tecnica
       run: |-
-        curl -X POST \
+        body_file=$(mktemp)
+        http_code=$(curl -sS -X POST \
+          -o "$body_file" \
+          -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
           -d '{"group": "tecnica", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
-          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
+        body=$(cat "$body_file")
+        echo "HTTP $http_code"
+        if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
+        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        echo "overall_status: $overall"
+        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
     needs:
     - validacion-vulnerabilidades
   validacion-vulnerabilidades:
@@ -21,20 +30,38 @@ jobs:
     steps:
     - name: Validación Vulnerabilidades
       run: |-
-        curl -X POST \
+        body_file=$(mktemp)
+        http_code=$(curl -sS -X POST \
+          -o "$body_file" \
+          -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
           -d '{"group": "vulnerabilidades", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
-          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
+        body=$(cat "$body_file")
+        echo "HTTP $http_code"
+        if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
+        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        echo "overall_status: $overall"
+        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
   validacion-estilo:
     runs-on: ubuntu-latest
     steps:
     - name: Validación Estilo
       run: |-
-        curl -X POST \
+        body_file=$(mktemp)
+        http_code=$(curl -sS -X POST \
+          -o "$body_file" \
+          -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
           -d '{"group": "estilo", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
-          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
+        body=$(cat "$body_file")
+        echo "HTTP $http_code"
+        if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
+        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        echo "overall_status: $overall"
+        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
     needs:
     - validacion-vulnerabilidades
