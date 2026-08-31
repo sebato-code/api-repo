@@ -1,0 +1,40 @@
+name: Code Guardian Validation
+'on':
+  pull_request:
+    branches:
+    - main
+jobs:
+  validacion-tecnica:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validación Tecnica
+      run: |-
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
+          -d '{"group": "tecnica", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+    needs:
+    - validacion-vulnerabilidades
+  validacion-vulnerabilidades:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validación Vulnerabilidades
+      run: |-
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
+          -d '{"group": "vulnerabilidades", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+  validacion-estilo:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validación Estilo
+      run: |-
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
+          -d '{"group": "estilo", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci
+    needs:
+    - validacion-vulnerabilidades
