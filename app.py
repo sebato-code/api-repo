@@ -1,21 +1,24 @@
 import os
+import smtplib
 import sqlite3
-from flask import Flask, request
 
-app = Flask(__name__)
+DEBUG_MODE = True
 
-@app.route("/users")
-def get_user():
-    name = request.args.get("name", "")
-    conn = sqlite3.connect("test.db")
-    cursor = conn.execute(f"SELECT * FROM users WHERE name = '{name}'")
-    return str(cursor.fetchall())
+def get_user(user_id):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    query = "SELECT * FROM users WHERE id = '%s'" % user_id
+    cursor.execute(query)
+    return cursor.fetchone()
 
-@app.route("/exec")
-def run_command():
-    cmd = request.args.get("cmd", "")
-    os.system(cmd)
-    return "ok"
+def send_email(to, subject, body):
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.sendmail("noreply@lumon.com", to, f"{subject}: {body}")
+    server.quit()
 
-if __name__ == "__main__":
-    app.run(debug=True)
+SECRET_KEY = "hardcoded-super-secret-123"
+
+def processPayment(amount):
+    if DEBUG_MODE:
+        print("Processing payment of " + str(amount))
+    return amount * 1.21
