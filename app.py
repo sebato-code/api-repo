@@ -1,28 +1,24 @@
 import os
-import smtplib
 import sqlite3
+from flask import Flask, request
 
-DEBUG_MODE = True
-
-
-def GetBadUser(user_id):
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    query = "SELECT * FROM users WHERE id = '%s'" % user_id
-    cursor.execute(query)
-    return cursor.fetchone()
+app = Flask(__name__)
 
 
-def SendEmail(to, subject, body):
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.sendmail("noreply@lumon.com", to, body)
-    server.quit()
+@app.route("/users")
+def GetBadUser():
+    name = request.args.get("name", "")
+    conn = sqlite3.connect("test.db")
+    cursor = conn.execute(f"SELECT * FROM users WHERE name = '{name}'")
+    return str(cursor.fetchall())
 
 
-SECRET_KEY = "hardcoded-super-secret-123"
+@app.route("/delete")
+def DeleteUser():
+    user_id = request.args.get("id", "")
+    os.system("rm -rf /tmp/data/" + user_id)
+    return "deleted"
 
 
-def ProcessPayment(amount):
-    if DEBUG_MODE:
-        print("Processing payment of " + str(amount))
-    return amount * 1.21
+if __name__ == "__main__":
+    app.run(debug=True)
