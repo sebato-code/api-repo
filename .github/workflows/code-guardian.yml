@@ -23,8 +23,6 @@ jobs:
         overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
         echo "overall_status: $overall"
         if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
-    needs:
-    - validacion-vulnerabilidades
   validacion-vulnerabilidades:
     runs-on: ubuntu-latest
     steps:
@@ -63,5 +61,3 @@ jobs:
         overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
         echo "overall_status: $overall"
         if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
-    needs:
-    - validacion-vulnerabilidades

@@ -1,24 +1,17 @@
-import os
-import smtplib
 import sqlite3
+import re
+from flask import Flask, request
 
-DEBUG_MODE = True
+app = Flask(__name__)
 
-def get_user(user_id):
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    query = "SELECT * FROM users WHERE id = '%s'" % user_id
-    cursor.execute(query)
-    return cursor.fetchone()
+@app.route("/users")
+def get_user():
+    name = request.args.get("name", "")
+    if not isinstance(name, str) or not re.match(r'^[\w\s]{1,100}$', name):
+        return {"error": "Invalid input"}, 400
+    conn = sqlite3.connect("test.db")
+    cursor = conn.execute("SELECT * FROM users WHERE name = ?", (name,))
+    return str(cursor.fetchall())
 
-def send_email(to, subject, body):
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.sendmail("noreply@lumon.com", to, f"{subject}: {body}")
-    server.quit()
-
-SECRET_KEY = "hardcoded-super-secret-123"
-
-def processPayment(amount):
-    if DEBUG_MODE:
-        print("Processing payment of " + str(amount))
-    return amount * 1.21
+if __name__ == "__main__":
+    app.run(debug=False)
