@@ -15,14 +15,27 @@ jobs:
           -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
-          -d '{"group": "tecnica", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          -d '{"mode": "async", "group": "tecnica", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
           ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
         body=$(cat "$body_file")
         echo "HTTP $http_code"
         if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
-        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        run_id=$(echo "$body" | sed -E 's/.*"run_id":"([^"]+)".*/\1/')
+        if [ -z "$run_id" ] || [ "$run_id" = "$body" ]; then echo "No run_id en respuesta"; cat "$body_file"; exit 1; fi
+        echo "run_id: $run_id"
+        for i in $(seq 1 60); do
+          sleep 10
+          st_body=$(curl -sS -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}"     "${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci/status?run_id=$run_id")
+          st=$(echo "$st_body" | sed -E 's/.*"status":"([a-z_]+)".*/\1/')
+          echo "poll $i: status=$st"
+          if [ "$st" = "completed" ] || [ "$st" = "failed" ]; then break; fi
+        done
+        if [ "$st" != "completed" ]; then echo "Validacion no completo a tiempo (status=$st)"; exit 1; fi
+        overall=$(echo "$st_body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
         echo "overall_status: $overall"
-        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
+        if [ "$overall" != "passed" ] && [ "$overall" != "warning" ]; then echo "Validacion $overall"; exit 1; fi
+    needs:
+    - validacion-vulnerabilidades
   validacion-vulnerabilidades:
     runs-on: ubuntu-latest
     steps:
@@ -34,14 +47,25 @@ jobs:
           -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
-          -d '{"group": "vulnerabilidades", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          -d '{"mode": "async", "group": "vulnerabilidades", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
           ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
         body=$(cat "$body_file")
         echo "HTTP $http_code"
         if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
-        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        run_id=$(echo "$body" | sed -E 's/.*"run_id":"([^"]+)".*/\1/')
+        if [ -z "$run_id" ] || [ "$run_id" = "$body" ]; then echo "No run_id en respuesta"; cat "$body_file"; exit 1; fi
+        echo "run_id: $run_id"
+        for i in $(seq 1 60); do
+          sleep 10
+          st_body=$(curl -sS -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}"     "${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci/status?run_id=$run_id")
+          st=$(echo "$st_body" | sed -E 's/.*"status":"([a-z_]+)".*/\1/')
+          echo "poll $i: status=$st"
+          if [ "$st" = "completed" ] || [ "$st" = "failed" ]; then break; fi
+        done
+        if [ "$st" != "completed" ]; then echo "Validacion no completo a tiempo (status=$st)"; exit 1; fi
+        overall=$(echo "$st_body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
         echo "overall_status: $overall"
-        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
+        if [ "$overall" != "passed" ] && [ "$overall" != "warning" ]; then echo "Validacion $overall"; exit 1; fi
   validacion-estilo:
     runs-on: ubuntu-latest
     steps:
@@ -53,11 +77,24 @@ jobs:
           -w '%{http_code}' \
           -H "Content-Type: application/json" \
           -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}" \
-          -d '{"group": "estilo", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
+          -d '{"mode": "async", "group": "estilo", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}", "pr_number": "${{ github.event.pull_request.number }}", "commit_sha": "${{ github.event.pull_request.head.sha }}", "git": {"provider": "github", "auth_type": "pat", "owner": "${{ github.repository_owner }}", "repo": "${{ github.event.repository.name }}", "branch": "${{ github.head_ref }}", "base_branch": "${{ github.base_ref }}"}}' \
           ${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci)
         body=$(cat "$body_file")
         echo "HTTP $http_code"
         if [ "$http_code" != "200" ]; then echo "Virgilio API no disponible"; exit 1; fi
-        overall=$(echo "$body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
+        run_id=$(echo "$body" | sed -E 's/.*"run_id":"([^"]+)".*/\1/')
+        if [ -z "$run_id" ] || [ "$run_id" = "$body" ]; then echo "No run_id en respuesta"; cat "$body_file"; exit 1; fi
+        echo "run_id: $run_id"
+        for i in $(seq 1 60); do
+          sleep 10
+          st_body=$(curl -sS -H "X-Code-Guardian-Api-Key: ${{ secrets.CODE_GUARDIAN_API_KEY }}"     "${{ secrets.VIRGILIO_API_URL }}/code-guardian/validate/ci/status?run_id=$run_id")
+          st=$(echo "$st_body" | sed -E 's/.*"status":"([a-z_]+)".*/\1/')
+          echo "poll $i: status=$st"
+          if [ "$st" = "completed" ] || [ "$st" = "failed" ]; then break; fi
+        done
+        if [ "$st" != "completed" ]; then echo "Validacion no completo a tiempo (status=$st)"; exit 1; fi
+        overall=$(echo "$st_body" | sed -E 's/.*"overall_status":"([a-z]+)".*/\1/')
         echo "overall_status: $overall"
-        if [ "$overall" = "failed" ]; then echo "Validacion FAILED"; exit 1; fi
+        if [ "$overall" != "passed" ] && [ "$overall" != "warning" ]; then echo "Validacion $overall"; exit 1; fi
+    needs:
+    - validacion-tecnica
